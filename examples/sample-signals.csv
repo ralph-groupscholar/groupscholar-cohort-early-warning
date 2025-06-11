@@ -1,0 +1,4 @@
+full_name,email,cohort,signal_type,severity,note,occurred_at,source_key
+Avery Lee,avery.lee@groupscholar.com,2026,attendance,3,Missed session,2026-02-02,import-sample-001
+Jules Moreno,jules.moreno@groupscholar.com,2025,engagement,2,Delayed reply to outreach,2026-01-30,import-sample-002
+Kiara Patel,kiara.patel@groupscholar.com,2026,academic,4,Reported GPA dip,2026-01-28,import-sample-003
