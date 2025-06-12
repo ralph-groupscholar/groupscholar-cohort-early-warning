@@ -134,11 +134,19 @@ async fn main() -> anyhow::Result<()> {
                 email.as_deref(),
             )
             .await?;
+            let trends = db::fetch_weekly_trends(
+                &pool,
+                since_date,
+                cohort.as_deref(),
+                email.as_deref(),
+            )
+            .await?;
             let report = report::build_report(
                 cohort.as_deref().or(email.as_deref()),
                 since_days,
                 since_date,
                 &signals,
+                &trends,
             );
             std::fs::write(&out, report)?;
             println!("Report written to {}.", out.display());

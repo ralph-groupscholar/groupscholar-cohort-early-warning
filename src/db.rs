@@ -3,7 +3,7 @@ use chrono::NaiveDate;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
-use crate::models::SignalRecord;
+use crate::models::{SignalRecord, SignalTrend};
 
 pub async fn init_db(pool: &PgPool) -> anyhow::Result<()> {
     sqlx::migrate!("./migrations").run(pool).await?;
@@ -153,6 +153,53 @@ pub async fn fetch_signals(
     }
 
     Ok(signals)
+}
+
+pub async fn fetch_weekly_trends(
+    pool: &PgPool,
+    since_date: NaiveDate,
+    cohort: Option<&str>,
+    email: Option<&str>,
+) -> anyhow::Result<Vec<SignalTrend>> {
+    let mut query = String::from(
+        "SELECT date_trunc('week', s.occurred_at)::date AS week_start, \
+         COUNT(*) AS signal_count, \
+         AVG(s.severity)::float8 AS avg_severity, \
+         COUNT(DISTINCT sc.id) AS scholar_count \
+         FROM cohort_early_warning.signals s \
+         JOIN cohort_early_warning.scholars sc ON sc.id = s.scholar_id \
+         WHERE s.occurred_at >= $1",
+    );
+
+    if cohort.is_some() {
+        query.push_str(" AND sc.cohort = $2");
+    } else if email.is_some() {
+        query.push_str(" AND sc.email = $2");
+    }
+
+    query.push_str(" GROUP BY week_start ORDER BY week_start ASC");
+
+    let mut rows = sqlx::query(&query).bind(since_date);
+
+    if let Some(value) = cohort {
+        rows = rows.bind(value);
+    } else if let Some(value) = email {
+        rows = rows.bind(value);
+    }
+
+    let records = rows.fetch_all(pool).await?;
+    let mut trends = Vec::new();
+
+    for row in records {
+        trends.push(SignalTrend {
+            week_start: row.get("week_start"),
+            signal_count: row.get("signal_count"),
+            avg_severity: row.get("avg_severity"),
+            scholar_count: row.get("scholar_count"),
+        });
+    }
+
+    Ok(trends)
 }
 
 pub async fn import_csv(pool: &PgPool, csv_path: &std::path::Path) -> anyhow::Result<usize> {

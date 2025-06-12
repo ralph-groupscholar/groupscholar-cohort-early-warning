@@ -6,7 +6,7 @@ A Rust CLI that tracks early warning signals for scholar cohorts, scores risk, a
 - Stores scholar profiles and risk signals in Postgres
 - Imports signals from CSV with idempotent source keys
 - Scores scholars based on severity and recency
-- Generates markdown reports with signal mix and top risk list
+- Generates markdown reports with signal mix, weekly trend, and top risk list
 
 ## Tech Stack
 - Rust

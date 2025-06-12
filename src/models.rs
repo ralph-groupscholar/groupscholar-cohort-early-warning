@@ -28,3 +28,11 @@ pub struct SignalTypeSummary {
     pub count: usize,
     pub avg_severity: f64,
 }
+
+#[derive(Debug, Clone)]
+pub struct SignalTrend {
+    pub week_start: NaiveDate,
+    pub signal_count: i64,
+    pub avg_severity: f64,
+    pub scholar_count: i64,
+}

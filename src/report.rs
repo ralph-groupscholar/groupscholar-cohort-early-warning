@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use chrono::NaiveDate;
 
-use crate::models::{SignalRecord, SignalTypeSummary};
+use crate::models::{SignalRecord, SignalTrend, SignalTypeSummary};
 use crate::risk;
 
 pub fn summarize_by_type(signals: &[SignalRecord]) -> Vec<SignalTypeSummary> {
@@ -37,6 +37,7 @@ pub fn build_report(
     since_days: i64,
     cutoff: NaiveDate,
     signals: &[SignalRecord],
+    trends: &[SignalTrend],
 ) -> String {
     let scores = risk::score_signals(signals, since_days);
     let summaries = summarize_by_type(signals);
@@ -101,5 +102,70 @@ pub fn build_report(
         }
     }
 
+    let _ = writeln!(output);
+    let _ = writeln!(output, "## Weekly Signal Trend");
+
+    if trends.is_empty() {
+        let _ = writeln!(output, "No weekly trend data available for this window.");
+    } else {
+        for trend in trends {
+            let _ = writeln!(
+                output,
+                "- Week of {}: {} signals across {} scholars (avg severity {:.2})",
+                trend.week_start, trend.signal_count, trend.scholar_count, trend.avg_severity
+            );
+        }
+    }
+
     output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDate;
+    use uuid::Uuid;
+
+    fn sample_signal(days_ago: i64, severity: i32) -> SignalRecord {
+        let occurred_at = chrono::Utc::now().date_naive() - chrono::Duration::days(days_ago);
+        SignalRecord {
+            scholar_id: Uuid::new_v4(),
+            scholar_name: "Avery Lee".to_string(),
+            scholar_email: "avery@example.com".to_string(),
+            cohort: "2026".to_string(),
+            signal_type: "attendance".to_string(),
+            severity,
+            occurred_at,
+            note: "missed session".to_string(),
+        }
+    }
+
+    #[test]
+    fn summarizes_signal_types() {
+        let signals = vec![sample_signal(2, 3), sample_signal(1, 1)];
+        let summaries = summarize_by_type(&signals);
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].count, 2);
+        assert!((summaries[0].avg_severity - 2.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn report_includes_weekly_trend_section() {
+        let signals = vec![sample_signal(2, 3)];
+        let trends = vec![SignalTrend {
+            week_start: NaiveDate::from_ymd_opt(2026, 2, 2).unwrap(),
+            signal_count: 2,
+            avg_severity: 2.5,
+            scholar_count: 1,
+        }];
+        let report = build_report(
+            Some("2026"),
+            30,
+            NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
+            &signals,
+            &trends,
+        );
+        assert!(report.contains("## Weekly Signal Trend"));
+        assert!(report.contains("Week of 2026-02-02"));
+    }
 }
